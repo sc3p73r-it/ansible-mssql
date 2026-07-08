@@ -41,7 +41,6 @@
       loop:
         - /etc/apt/sources.list.d/mssql-server-2025.list
         - /etc/apt/sources.list.d/msprod.list
-        - /etc/apt/sources.list.d/mssql-server-2022.list
         - /etc/apt/sources.list.d/mssql-server.list
         - /usr/share/keyrings/microsoft.asc
         - /usr/share/keyrings/microsoft-prod.gpg
