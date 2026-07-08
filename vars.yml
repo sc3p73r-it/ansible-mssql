@@ -5,5 +5,7 @@ mssql_sa_password: "msSQLp@ssw0rd"
 # Edition choices: Evaluation, Developer, Express, Standard, Enterprise
 mssql_edition: "Evaluation"
 
-mssql_accept_microsoft_odbc_driver_for_sql_server_eula: true
-mssql_accept_eula: true
+mssql_enable_sql_agent: true
+mssql_install_fts: true
+mssql_install_powershell: true
+mssql_tune_for_fua_storage: true
