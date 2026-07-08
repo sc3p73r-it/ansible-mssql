@@ -16,26 +16,6 @@
         state: present
         update_cache: true
 
-    - name: Clean up old broken repository configuration files
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: absent
-      loop:
-        - /etc/apt/sources.list.d/mssql-server-2022.list
-        - /etc/apt/sources.list.d/mssql-server.list
-
-    - name: Check if mssql-server service is active
-      ansible.builtin.systemd:
-        name: mssql-server
-      register: mssql_service_status
-      ignore_errors: true
-
-    - name: Remove broken or partial mssql.conf if service is not running
-      ansible.builtin.file:
-        path: /var/opt/mssql/mssql.conf
-        state: absent
-      when: mssql_service_status.status.ActiveState | default('') != 'active'
-
     - name: Download Microsoft repository GPG key
       ansible.builtin.get_url:
         url: https://packages.microsoft.com/keys/microsoft.asc
@@ -63,6 +43,18 @@
         name: mssql-server
         state: present
 
+    - name: Verify if mssql-server service is actively running
+      ansible.builtin.systemd:
+        name: mssql-server
+      register: mssql_service_status
+      ignore_errors: true
+
+    - name: Remove stale mssql.conf if the service is dead/unconfigured
+      ansible.builtin.file:
+        path: /var/opt/mssql/mssql.conf
+        state: absent
+      when: mssql_service_status.status.ActiveState | default('') != 'active'
+
     - name: Check if MS SQL Server configuration file exists
       ansible.builtin.stat:
         path: /var/opt/mssql/mssql.conf
@@ -87,13 +79,23 @@
       environment:
         ACCEPT_EULA: "Y"
 
+    - name: Create instant system-wide symlinks for SQL tools
+      ansible.builtin.file:
+        src: "/opt/mssql-tools18/bin/{{ item }}"
+        dest: "/usr/local/bin/{{ item }}"
+        state: link
+        force: true
+      loop:
+        - sqlcmd
+        - bcp
+
     - name: Ensure MS SQL Server service is running and enabled on boot
       ansible.builtin.service:
         name: mssql-server
         state: started
         enabled: true
 
-    - name: Add MS SQL Tools 18 binary folder to systemic PATH
+    - name: Add MS SQL Tools 18 binary folder to systemic PATH (For future logins)
       ansible.builtin.copy:
         dest: /etc/profile.d/mssql-tools.sh
         content: |
