@@ -7,10 +7,7 @@ It features an automated fallback mechanism to safely deploy on newer distributi
 ---
 
 ## Features
-
-* **Automated Cleanup**: Purges older or malformed repository remnants (`mssql-server-2022`) to prevent package manager caching conflicts.
 * **Self-Healing Initialization**: Evaluates instance state dynamically to cleanly run unattended EULA licensing configurations.
-* **Firewall Automation**: Manages local `UFW` rules to expose default port `1433` safely.
 * **System Environment Integration**: Automatically appends native SQL binaries (`sqlcmd`, `bcp`) to the structural system `$PATH`.
 
 ---
