@@ -1,0 +1,56 @@
+---
+- name: Completely Uninstall MS SQL Server and Tools
+  hosts: sql
+  become: true
+
+  tasks:
+    - name: Stop and disable MS SQL Server service
+      ansible.builtin.service:
+        name: mssql-server
+        state: stopped
+        enabled: false
+      ignore_errors: true
+
+    - name: Purge MS SQL Server and command-line tools packages
+      ansible.builtin.apt:
+        name:
+          - mssql-server
+          - mssql-tools18
+          - unixodbc-dev
+        state: absent
+        purge: true
+
+    - name: Automatically remove trailing dependencies
+      ansible.builtin.apt:
+        autoremove: true
+        purge: true
+
+    - name: Delete SQL Server configuration and database directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /var/opt/mssql
+        - /opt/mssql
+        - /opt/mssql-tools18
+
+    - name: Remove Microsoft repository configurations and keys
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/mssql-server-2025.list
+        - /etc/apt/sources.list.d/msprod.list
+        - /etc/apt/sources.list.d/mssql-server-2022.list
+        - /etc/apt/sources.list.d/mssql-server.list
+        - /usr/share/keyrings/microsoft.asc
+        - /usr/share/keyrings/microsoft-prod.gpg
+
+    - name: Remove system PATH adjustments for MS SQL Tools
+      ansible.builtin.file:
+        path: /etc/profile.d/mssql-tools.sh
+        state: absent
+
+    - name: Refresh apt package cache
+      ansible.builtin.apt:
+        update_cache: true

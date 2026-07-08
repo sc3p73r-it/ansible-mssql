@@ -1,0 +1,9 @@
+---
+# The password for the SA (System Administrator) user
+mssql_sa_password: "msSQLp@ssw0rd"
+
+# Edition choices: Evaluation, Developer, Express, Standard, Enterprise
+mssql_edition: "Evaluation"
+
+mssql_accept_microsoft_odbc_driver_for_sql_server_eula: true
+mssql_accept_eula: true

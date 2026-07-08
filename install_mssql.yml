@@ -1,0 +1,107 @@
+---
+- name: Automate MS SQL Server 2025 Installation on Ubuntu
+  hosts: sql
+  become: true
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Ensure required system dependencies are present
+      ansible.builtin.apt:
+        name:
+          - curl
+          - gnupg
+          - apt-transport-https
+          - software-properties-common
+        state: present
+        update_cache: true
+
+    - name: Clean up old broken repository configuration files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/mssql-server-2022.list
+        - /etc/apt/sources.list.d/mssql-server.list
+
+    - name: Check if mssql-server service is active
+      ansible.builtin.systemd:
+        name: mssql-server
+      register: mssql_service_status
+      ignore_errors: true
+
+    - name: Remove broken or partial mssql.conf if service is not running
+      ansible.builtin.file:
+        path: /var/opt/mssql/mssql.conf
+        state: absent
+      when: mssql_service_status.status.ActiveState | default('') != 'active'
+
+    - name: Download Microsoft repository GPG key
+      ansible.builtin.get_url:
+        url: https://packages.microsoft.com/keys/microsoft.asc
+        dest: /usr/share/keyrings/microsoft.asc
+        mode: '0644'
+
+    - name: Add MS SQL Server 2025 Repository (Forced Noble Fallback)
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.asc] https://packages.microsoft.com/ubuntu/24.04/mssql-server-2025 noble main"
+        state: present
+        filename: mssql-server-2025
+
+    - name: Add MS SQL Tools Repository (Forced Noble Fallback)
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.asc] https://packages.microsoft.com/ubuntu/24.04/prod noble main"
+        state: present
+        filename: msprod
+
+    - name: Refresh apt cache after adding repositories
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install MS SQL Server package
+      ansible.builtin.apt:
+        name: mssql-server
+        state: present
+
+    - name: Check if MS SQL Server configuration file exists
+      ansible.builtin.stat:
+        path: /var/opt/mssql/mssql.conf
+      register: mssql_conf_file
+
+    - name: Run unattended mssql-conf configuration setup
+      ansible.builtin.command:
+        cmd: /opt/mssql/bin/mssql-conf setup
+      environment:
+        ACCEPT_EULA: "Y"
+        MSSQL_SA_PASSWORD: "{{ mssql_sa_password }}"
+        MSSQL_PID: "{{ mssql_edition }}"
+      when: not mssql_conf_file.stat.exists
+      notify: Restart mssql-server
+
+    - name: Install MS SQL Tools 18 and unixODBC dependencies
+      ansible.builtin.apt:
+        name:
+          - mssql-tools18
+          - unixodbc-dev
+        state: present
+      environment:
+        ACCEPT_EULA: "Y"
+
+    - name: Ensure MS SQL Server service is running and enabled on boot
+      ansible.builtin.service:
+        name: mssql-server
+        state: started
+        enabled: true
+
+    - name: Add MS SQL Tools 18 binary folder to systemic PATH
+      ansible.builtin.copy:
+        dest: /etc/profile.d/mssql-tools.sh
+        content: |
+          export PATH="$PATH:/opt/mssql-tools18/bin"
+        mode: '0644'
+
+  handlers:
+    - name: Restart mssql-server
+      ansible.builtin.service:
+        name: mssql-server
+        state: restarted
